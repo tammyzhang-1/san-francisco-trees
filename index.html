@@ -185,7 +185,8 @@
           .attr('y', chartSVGHeight - 10)
           .attr('text-anchor', 'middle')
           .style('font-size', '14px')
-          .text('Month');
+          .text('Month')
+          .style("font-family", "'Lato', 'Helvetica', sans-serif");
         
         chartSVG.append('text')
           .attr('transform', 'rotate(-90)')
@@ -193,7 +194,8 @@
           .attr('y', 10)
           .attr('text-anchor', 'middle')
           .style('font-size', '14px')
-          .text('Number of Trees Planted');
+          .text('Number of Trees Planted')
+          .style("font-family", "'Lato', 'Helvetica', sans-serif");
         
         // ----------------- Time Series -----------------
         const yearCounts = await d3.csv("sorted_trees.csv", d3.autoType);
@@ -278,7 +280,8 @@
           .attr('y', timeSVGHeight - 10)
           .attr('text-anchor', 'middle')
           .style('font-size', '14px')
-          .text('Year');
+          .text('Year')
+          .style("font-family", "'Lato', 'Helvetica', sans-serif");
         
         timeSVG.append('text')
           .attr('transform', 'rotate(-90)')
@@ -286,7 +289,8 @@
           .attr('y', 10)
           .attr('text-anchor', 'middle')
           .style('font-size', '14px')
-          .text('Count');
+          .text('Count')
+          .style("font-family", "'Lato', 'Helvetica', sans-serif");
         }
    
     }
