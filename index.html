@@ -3,6 +3,8 @@
     <title>INFO 4310 - HW 1</title>
     <script src="https://d3js.org/d3.v7.min.js"></script>
     <script src="https://d3js.org/topojson.v3.min.js"></script>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Lato:wght@400;700&display=swap">
+
     <style>
         .neighborhood {
             fill: white;
@@ -120,7 +122,8 @@
           .attr('text-anchor', 'middle')
           .style('font-size', '20px')
           .style('font-weight', 'bold')
-          .text('When are Trees Planted in San Francisco?');
+          .text('When are Trees Planted in San Francisco?')
+          .style("font-family", "'Lato', 'Helvetica', sans-serif");
 
         // ----------------- Histogram -----------------
         const seasonCounts = await d3.csv("histogram_data.csv", d3.autoType);
@@ -174,7 +177,8 @@
           .attr('y', 20)
           .attr('text-anchor', 'middle')
           .style('font-size', '16px')
-          .text('Tree Planting by Month');
+          .text('Tree Planting by Month')
+          .style("font-family", "'Lato', 'Helvetica', sans-serif");
 
         chartSVG.append('text')
           .attr('x', chartSVGWidth / 2)
@@ -266,7 +270,8 @@
             .attr('y', 20)
             .attr('text-anchor', 'middle')
             .style('font-size', '16px')
-            .text('Trees Planted Yearly in ' + row.charAt(0).toUpperCase() + row.slice(1));
+            .text('Trees Planted Yearly in ' + row.charAt(0).toUpperCase() + row.slice(1))
+            .style("font-family", "'Lato', 'Helvetica', sans-serif");
 
         timeSVG.append('text')
           .attr('x', timeSVGWidth / 2)
