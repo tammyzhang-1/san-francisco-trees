@@ -220,7 +220,7 @@
           const yearExtent = d3.extent(seasons[row], d => d.year_planted);
           const yearScale = d3.scaleLinear().domain(yearExtent).range([0, timeWidth]);
         
-          const countYearExtent = d3.extent(seasons[row], d => d.count);
+          const countYearExtent = d3.extent(yearCounts, d => d.count);
           const countYearScale = d3.scaleLinear().domain(countYearExtent).range([timeHeight, 0]);
           
           let leftTimeAxis = d3.axisLeft(countYearScale)
