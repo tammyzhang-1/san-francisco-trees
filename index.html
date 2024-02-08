@@ -1,0 +1,291 @@
+<html>
+  <head>
+    <title>INFO 4310 - HW 1</title>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <script src="https://d3js.org/topojson.v3.min.js"></script>
+    <style>
+        .neighborhood {
+            fill: white;
+            stroke: #c3c3c3;
+            stroke-width: 2px;
+        }
+      
+        .outline {
+          stroke: #afafaf;
+          stroke-width: 2px;
+          fill: none;
+        }
+
+        .gridlines line {
+          stroke: #afafaf;
+        }
+
+        #container {
+          display: flex;
+        }
+
+        #map-hist-section {
+          display: flex;
+          flex-direction: column;
+          flex-wrap: wrap;
+        }
+
+        #timeseries-section {
+          display: flex;
+          flex-direction: row;
+          flex-wrap: wrap;
+          width: 950px;
+          align-content: flex-start;
+          padding-left: 40px;
+        }
+
+        #timeseries-section svg {
+          max-width: 50%;
+        }
+      
+    </style>
+  </head>
+
+  <body>
+    <div id="container">
+      <div id="map-hist-section">
+        <svg id="sfmap" height="500" width="500" style="background: #fff;"> </svg>
+        <svg id="histogram" height="310" width="500"></svg>
+      </div>
+      
+      <div id="timeseries-section">
+        <svg id="spring_timeseries" height="400" width="500"></svg>
+        <svg id="summer_timeseries" height="400" width="500"></svg>
+        <svg id="fall_timeseries" height="400" width="500"></svg>
+        <svg id="winter_timeseries" height="400" width="500"></svg>
+      </div>
+    </div>
+  </body>
+
+  <script>
+    const mapSVG = d3.select("#sfmap");
+    const mapSVGWidth = mapSVG.attr("width");
+    const mapSVGHeight = mapSVG.attr("height");
+    const mapMargin = { top: 20, right: 20, bottom: 20, left:20};
+    const mapWidth = mapSVGWidth - mapMargin.left - mapMargin.right;
+    const mapHeight = mapSVGHeight - mapMargin.top - mapMargin.bottom;
+    const map = mapSVG.append("g")
+                    .attr("transform","translate("+mapMargin.left+","+mapMargin.top+")");
+
+    const chartSVG = d3.select("svg#histogram");
+    const chartSVGWidth = chartSVG.attr("width");
+    const chartSVGHeight = chartSVG.attr("height");
+    const chartMargin = {top: 30, right: 10, bottom: 60, left: 60};
+    const chartWidth = chartSVGWidth - chartMargin.left - chartMargin.right;
+    const chartHeight = chartSVGHeight - chartMargin.top - chartMargin.bottom;
+
+    let annotations = chartSVG.append("g").attr("id","annotations");
+    let chartArea = chartSVG.append("g").attr("id","points")
+                    .attr("transform",`translate(${chartMargin.left},${chartMargin.top})`);
+
+    const requestData = async function() {
+        // ----------------- Map -----------------
+        const sf = await d3.json("SF-Neighborhoods.geo.json");
+        var neighborhoods = topojson.feature(sf, sf.objects.SFNeighborhoods);
+
+        var projection = d3.geoMercator().fitSize([mapWidth, mapHeight], neighborhoods);
+        var path = d3.geoPath().projection(projection);
+
+        map.selectAll("path.neighborhood").data(neighborhoods.features)
+          .join("path")
+          .attr("class", "neighborhood")
+          .attr("d", path);
+          
+        const trees = await d3.csv("SF_trees_final.csv", d3.autoType);
+
+        var colorScale = d3.scaleOrdinal()
+          .domain(["spring", "summer", "fall", "winter"]) 
+          .range(["#66A182", "#FFB400", "#D56062", "#445E93"]); 
+
+        trees.forEach( d => {
+          d.Position = projection( [d.lon, d.lat] );
+        });
+     
+        map.selectAll("circle").data(trees)
+           .join("circle")
+           .attr("r", 1.5)
+           .attr("fill", d => colorScale(d.season))
+           .attr("opacity", 0.6)
+           .attr("cx", d => d.Position[0])
+           .attr("cy", d => d.Position[1]);
+
+         map.append('text')
+          .attr('x', mapWidth / 2)
+          .attr('y', 0)
+          .attr('text-anchor', 'middle')
+          .style('font-size', '20px')
+          .style('font-weight', 'bold')
+          .text('When are Trees Planted in San Francisco?');
+
+        // ----------------- Histogram -----------------
+        const seasonCounts = await d3.csv("histogram_data.csv", d3.autoType);
+
+        const countExtent = d3.extent(seasonCounts, d => d.count);
+        const countScale = d3.scaleLinear().domain([0, countExtent[1]]).range([chartHeight, 0]);
+    
+        const months = d3.map(seasonCounts, d => d.month)
+        const monthScale = d3.scaleBand().domain(months).range([0, chartWidth])
+                                        .padding(0.05);
+
+        let leftAxis = d3.axisLeft(countScale)
+
+        let leftGridlines = d3.axisLeft(countScale)
+                        .tickSize(-chartWidth-10)
+                        .tickFormat("")
+
+        annotations.append("g")
+          .attr("class", "y axis")
+          .attr("transform",`translate(${chartMargin.left-10},${chartMargin.top})`)
+          .call(leftAxis)
+
+        annotations.append("g")
+          .attr("class", "y gridlines")
+          .attr("transform",`translate(${chartMargin.left-10},${chartMargin.top})`)
+          .call(leftGridlines);
+   
+        let bottomAxis = d3.axisBottom(monthScale).tickFormat(month => {
+            const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+            return monthNames[month - 1];
+        })
+    
+        annotations.append("g")
+                  .attr("class", "x axis")
+                  .attr("transform",`translate(${chartMargin.left},${chartHeight+chartMargin.top+10})`)
+                  .call(bottomAxis)
+                  .selectAll("text")
+                  .attr("transform", "rotate(45)")
+                  .style("text-anchor", "start");
+    
+        chartArea.selectAll('rect.bar').data( seasonCounts )
+             .join('rect').attr('class','bar')
+             .attr("fill", d => colorScale(d.season))
+             .attr("x", d => monthScale(d.month))
+             .attr("y", d => countScale(d.count))
+             .attr("height", d => countScale(0) - countScale(d.count))
+             .attr("width", monthScale.bandwidth());
+          
+        chartSVG.append('text')
+          .attr('x', chartSVGWidth / 2)
+          .attr('y', 20)
+          .attr('text-anchor', 'middle')
+          .style('font-size', '16px')
+          .text('Tree Planting by Month');
+
+        chartSVG.append('text')
+          .attr('x', chartSVGWidth / 2)
+          .attr('y', chartSVGHeight - 10)
+          .attr('text-anchor', 'middle')
+          .style('font-size', '14px')
+          .text('Month');
+        
+        chartSVG.append('text')
+          .attr('transform', 'rotate(-90)')
+          .attr('x', -chartSVGHeight / 2)
+          .attr('y', 10)
+          .attr('text-anchor', 'middle')
+          .style('font-size', '14px')
+          .text('Number of Trees Planted');
+        
+        // ----------------- Time Series -----------------
+        const yearCounts = await d3.csv("sorted_trees.csv", d3.autoType);
+
+        var seasons = {
+          spring: [],
+          summer: [],
+          fall: [],
+          winter: []
+        };
+
+        yearCounts.forEach(function (row) {
+          seasons[row.season].push(row);
+        });
+
+        for (const row in seasons) {
+          const timeSVG = d3.select("svg#" + row + "_timeseries");
+          const timeSVGWidth = timeSVG.attr("width");
+          const timeSVGHeight = timeSVG.attr("height");
+          const timeMargin = {top: 30, right: 50, bottom: 50, left: 50};
+          const timeWidth = timeSVGWidth - timeMargin.left - timeMargin.right;
+          const timeHeight = timeSVGHeight - timeMargin.top - timeMargin.bottom;
+
+          let timeAnnotations = timeSVG.append("g").attr("id","annotations"); 
+          let timeChartArea = timeSVG.append("g").attr("id","points")
+                          .attr("transform",`translate(${timeMargin.left},${timeMargin.top})`);
+          
+          const yearExtent = d3.extent(seasons[row], d => d.year_planted);
+          const yearScale = d3.scaleLinear().domain(yearExtent).range([0, timeWidth]);
+        
+          const countYearExtent = d3.extent(seasons[row], d => d.count);
+          const countYearScale = d3.scaleLinear().domain(countYearExtent).range([timeHeight, 0]);
+          
+          let leftTimeAxis = d3.axisLeft(countYearScale)
+          let leftTimeGridlines = d3.axisLeft(countYearScale)
+                                  .tickSize(-timeWidth-10)
+                                  .tickFormat("")
+          timeAnnotations.append("g")
+                      .attr("class", "y axis")
+                      .attr("transform",`translate(${timeMargin.left-10},${timeMargin.top})`)
+                      .call(leftTimeAxis)
+          timeAnnotations.append("g")
+                      .attr("class", "y gridlines")
+                      .attr("transform",`translate(${timeMargin.left-10},${timeMargin.top})`)
+                      .call(leftTimeGridlines);
+
+          let bottomTimeAxis = d3.axisBottom(yearScale).tickFormat(d3.format("d"))
+          let bottomTimeGridlines = d3.axisBottom(yearScale)
+                                  .tickSize(-timeHeight-10)
+                                  .tickFormat("")
+          timeAnnotations.append("g")
+                      .attr("class", "y axis")
+                      .attr("transform",`translate(${timeMargin.left},${timeHeight + timeMargin.top+10})`)
+                      .call(bottomTimeAxis)
+          timeAnnotations.append("g")
+                      .attr("class", "y gridlines")
+                      .attr("transform",`translate(${timeMargin.left},${timeHeight + timeMargin.top+10})`)
+                      .call(bottomTimeGridlines);
+      
+          var line = d3.line()
+                      .x(d => yearScale(d.year_planted))
+                      .y(d => countYearScale(d.count));
+          
+          timeChartArea.append('path')
+            .data([seasons[row]])
+            .attr('class', 'line ' + row + '-line')
+            .attr('d', line)
+            .attr('fill', "none")
+            .attr("stroke", colorScale(row))
+            .attr("stroke-width", 2);
+
+          timeSVG.append('text')
+            .attr('x', timeSVGWidth / 2)
+            .attr('y', 20)
+            .attr('text-anchor', 'middle')
+            .style('font-size', '16px')
+            .text('Trees Planted Yearly in ' + row.charAt(0).toUpperCase() + row.slice(1));
+
+        timeSVG.append('text')
+          .attr('x', timeSVGWidth / 2)
+          .attr('y', timeSVGHeight - 10)
+          .attr('text-anchor', 'middle')
+          .style('font-size', '14px')
+          .text('Year');
+        
+        timeSVG.append('text')
+          .attr('transform', 'rotate(-90)')
+          .attr('x', -timeSVGHeight / 2)
+          .attr('y', 10)
+          .attr('text-anchor', 'middle')
+          .style('font-size', '14px')
+          .text('Count');
+        }
+   
+    }
+    requestData();
+
+  </script>
+</html>
